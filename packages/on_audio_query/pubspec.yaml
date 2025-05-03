@@ -24,10 +24,26 @@ environment:
 
 dependencies:
   # on_audio_query
-  on_audio_query_platform_interface: ^1.7.0
-  on_audio_query_web: ^1.6.0
-  on_audio_query_ios: ^1.1.0
-  on_audio_query_android: ^1.1.0
+  on_audio_query_android:
+    git:
+      url: https://github.com/adeeteya/on_audio_query.git
+      ref: main
+      path: packages/on_audio_query_android
+  on_audio_query_ios:
+    git:
+      url: https://github.com/adeeteya/on_audio_query.git
+      ref: main
+      path: packages/on_audio_query_ios
+  on_audio_query_platform_interface:
+    git:
+      url: https://github.com/adeeteya/on_audio_query.git
+      ref: main
+      path: packages/on_audio_query_platform_interface
+  on_audio_query_web:
+    git:
+      url: https://github.com/adeeteya/on_audio_query.git
+      ref: main
+      path: packages/on_audio_query_web
 
   # Flutter
   flutter:
