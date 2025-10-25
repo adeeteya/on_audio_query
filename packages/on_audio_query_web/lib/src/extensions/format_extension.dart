@@ -1,7 +1,8 @@
 // ignore_for_file: unnecessary_this
 
-import 'dart:html';
+import 'dart:js_interop';
 
+import 'package:web/web.dart';
 import 'package:path/path.dart' as path_controller;
 import 'package:on_audio_query_web/on_audio_query_web.dart';
 import 'package:on_audio_query_platform_interface/on_audio_query_platform_interface.dart';
@@ -10,7 +11,7 @@ extension OnAudioQueryFormat on Map {
   Map<String, dynamic> formatAudio(String data, int size) {
     // MP3Info mp3info = MP3Processor.fromFile(data);
     String extension = path_controller.extension(data);
-    File file = File([], data);
+    File file = File((<BlobPart>[]).toJS, data);
     return {
       "_id": "${this["Title"]} : ${this["Artist"]}".generateAudioId(),
       "_data": data,

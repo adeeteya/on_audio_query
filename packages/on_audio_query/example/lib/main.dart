@@ -103,7 +103,7 @@ class _SongsState extends State<Songs> {
                       return ListTile(
                         title: Text(item.data![index].title),
                         subtitle: Text(item.data![index].artist ?? "No Artist"),
-                        trailing: const Icon(Icons.arrow_forward_rounded),
+                        trailing: Text("$index/${item.data!.length}"),
                         // This Widget will query/load image.
                         // You can use/create your own widget/method using [queryArtwork].
                         leading: QueryArtworkWidget(
@@ -124,7 +124,7 @@ class _SongsState extends State<Songs> {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(10),
-        color: Colors.redAccent.withOpacity(0.5),
+        color: Colors.redAccent.withValues(alpha: 0.5),
       ),
       padding: const EdgeInsets.all(20),
       child: Column(

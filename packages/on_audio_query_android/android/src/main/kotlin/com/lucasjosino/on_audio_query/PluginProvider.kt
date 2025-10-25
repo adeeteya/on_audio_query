@@ -29,9 +29,9 @@ object PluginProvider {
 
     private lateinit var activity: WeakReference<Activity>
 
-    private lateinit var call: WeakReference<MethodCall>
+    private lateinit var currentCall: MethodCall
 
-    private lateinit var result: WeakReference<MethodChannel.Result>
+    private lateinit var currentResult: MethodChannel.Result
 
     /**
      * Used to define the current [Activity] and [Context].
@@ -49,8 +49,8 @@ object PluginProvider {
      * Should be defined/redefined on every [MethodChannel.MethodCallHandler.onMethodCall] request.
      */
     fun setCurrentMethod(call: MethodCall, result: MethodChannel.Result) {
-        this.call = WeakReference(call)
-        this.result = WeakReference(result)
+        this.currentCall = call
+        this.currentResult = result
     }
 
     /**
@@ -80,7 +80,8 @@ object PluginProvider {
      * @return [MethodCall]
      */
     fun call(): MethodCall {
-        return this.call.get() ?: throw UninitializedPluginProviderException(ERROR_MESSAGE)
+        if (!::currentCall.isInitialized) throw UninitializedPluginProviderException(ERROR_MESSAGE)
+        return this.currentCall
     }
 
     /**
@@ -90,7 +91,8 @@ object PluginProvider {
      * @return [MethodChannel.Result]
      */
     fun result(): MethodChannel.Result {
-        return this.result.get() ?: throw UninitializedPluginProviderException(ERROR_MESSAGE)
+        if (!::currentResult.isInitialized) throw UninitializedPluginProviderException(ERROR_MESSAGE)
+        return this.currentResult
     }
 
     class UninitializedPluginProviderException(msg: String) : Exception(msg)
