@@ -4,10 +4,12 @@ import android.content.ContentResolver
 import android.content.Context
 import android.net.Uri
 import android.os.Build
+import android.os.Environment
 import android.provider.MediaStore
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lucasjosino.on_audio_query.PluginProvider
+import com.lucasjosino.on_audio_query.queries.helper.MediaScannerHelper
 import com.lucasjosino.on_audio_query.queries.helper.QueryHelper
 import com.lucasjosino.on_audio_query.types.checkAudiosUriType
 import com.lucasjosino.on_audio_query.types.sorttypes.checkSongSortType
@@ -56,29 +58,32 @@ class AudioQuery : ViewModel() {
         }
 
         val uriType = call.argument<Int>("uri")!!
-        val queryUris = resolveAudioUris(context, uriType)
+        val uriConfig = resolveAudioUris(context, uriType)
 
         Log.d(TAG, "Query config: ")
         Log.d(TAG, "\tsortType: $sortType")
         Log.d(TAG, "\tselection: $selection")
-        Log.d(TAG, "\turi(s): ${queryUris.joinToString()}")
+        Log.d(TAG, "\turi(s): ${uriConfig.uris.joinToString()}")
 
         // Query everything in background for a better performance.
         viewModelScope.launch {
-            val queryResult = loadSongs(queryUris, projection)
+            val queryResult = loadSongs(context, uriConfig, projection)
             result.success(queryResult)
         }
     }
 
     //Loading in Background
     private suspend fun loadSongs(
-        uris: List<Uri>,
+        context: Context,
+        config: AudioUriConfig,
         projection: Array<String>
     ): ArrayList<MutableMap<String, Any?>> =
         withContext(Dispatchers.IO) {
+            MediaScannerHelper.ensureVolumesIndexed(context, config.volumeRoots)
+
             val songList: ArrayList<MutableMap<String, Any?>> = ArrayList()
 
-            for (targetUri in uris) {
+            for (targetUri in config.uris) {
                 val cursor = resolver.query(targetUri, projection, selection, null, sortType)
                 Log.d(TAG, "Cursor count for $targetUri: ${cursor?.count}")
 
@@ -105,17 +110,49 @@ class AudioQuery : ViewModel() {
             return@withContext songList
         }
 
-    private fun resolveAudioUris(context: Context, uriType: Int): List<Uri> {
-        // Internal queries or legacy devices can continue to rely on the single URI path.
-        if (uriType != 0) return listOf(checkAudiosUriType(uriType))
+    private fun resolveAudioUris(context: Context, uriType: Int): AudioUriConfig {
+        if (uriType != 0) {
+            return AudioUriConfig(
+                uris = listOf(checkAudiosUriType(uriType)),
+                volumeRoots = emptySet()
+            )
+        }
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val volumeNames = MediaStore.getExternalVolumeNames(context)
             if (volumeNames.isNotEmpty()) {
-                return volumeNames.map { volume ->
+                val uris = volumeNames.map { volume ->
                     MediaStore.Audio.Media.getContentUri(volume)
                 }
+                val roots = resolveVolumeRoots(context)
+                return AudioUriConfig(uris, roots)
             }
         }
-        return listOf(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI)
+
+        val legacyRoot = Environment.getExternalStorageDirectory().absolutePath
+        return AudioUriConfig(
+            uris = listOf(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI),
+            volumeRoots = setOf(legacyRoot)
+        )
     }
+
+    private fun resolveVolumeRoots(context: Context): Set<String> {
+        val roots = mutableSetOf<String>()
+        context.getExternalFilesDirs(null)?.forEach { dir ->
+            if (dir == null) return@forEach
+            val path = dir.absolutePath
+            val androidIndex = path.indexOf("/Android/")
+            if (androidIndex > 0) {
+                roots.add(path.substring(0, androidIndex))
+            } else {
+                roots.add(path)
+            }
+        }
+        return roots
+    }
+
+    private data class AudioUriConfig(
+        val uris: List<Uri>,
+        val volumeRoots: Set<String>
+    )
 }
