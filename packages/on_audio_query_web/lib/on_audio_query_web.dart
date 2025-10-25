@@ -17,13 +17,13 @@ library on_audio_query_web;
 
 import 'dart:async';
 import 'dart:convert';
-import 'dart:html' as html;
 
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 import 'package:on_audio_query_platform_interface/on_audio_query_platform_interface.dart';
 
 import 'package:flutter/services.dart';
 import 'package:id3/id3.dart';
+import 'package:web/web.dart' as html;
 import 'src/extensions/format_extension.dart';
 
 part 'src/on_audio_query_web_controller.dart';
