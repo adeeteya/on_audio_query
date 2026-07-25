@@ -17,22 +17,32 @@ class PermissionController : PermissionManagerInterface,
         private const val TAG: String = "PermissionController"
 
         private const val REQUEST_CODE: Int = 88560
+
+        internal fun requiredPermissionsForSdk(sdkInt: Int): Array<String> {
+            return when {
+                sdkInt >= Build.VERSION_CODES.TIRAMISU -> {
+                    arrayOf(Manifest.permission.READ_MEDIA_AUDIO)
+                }
+                sdkInt >= Build.VERSION_CODES.M -> {
+                    arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+                }
+                else -> emptyArray()
+            }
+        }
+
+        internal fun arePermissionResultsGranted(
+            requestedPermissions: Array<String>,
+            grantResults: IntArray
+        ): Boolean {
+            if (requestedPermissions.isEmpty()) return true
+            return grantResults.size == requestedPermissions.size &&
+                    grantResults.all { it == PackageManager.PERMISSION_GRANTED }
+        }
     }
 
     var retryRequest: Boolean = false
 
-    private var permissions: Array<String> =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            arrayOf(
-                Manifest.permission.READ_MEDIA_AUDIO,
-                Manifest.permission.READ_MEDIA_IMAGES
-            )
-        } else {
-            arrayOf(
-                Manifest.permission.READ_EXTERNAL_STORAGE,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE
-            )
-        }
+    private val permissions: Array<String> = requiredPermissionsForSdk(Build.VERSION.SDK_INT)
 
     override fun permissionStatus(): Boolean = permissions.all {
         // After "leaving" this class, context will be null so, we need this context argument to
@@ -46,20 +56,27 @@ class PermissionController : PermissionManagerInterface,
     override fun requestPermission() {
         Log.d(TAG, "Requesting permissions.")
         Log.d(TAG, "SDK: ${Build.VERSION.SDK_INT}, Should retry request: $retryRequest")
+        if (permissions.isEmpty()) {
+            PluginProvider.result().success(true)
+            return
+        }
+
         val activity = PluginProvider.activity()
         ActivityCompat.requestPermissions(activity, permissions, REQUEST_CODE)
     }
 
     // Second requestPermission, this one with the option "Never Ask Again".
-    override fun retryRequestPermission() {
+    override fun retryRequestPermission(): Boolean {
         val activity = PluginProvider.activity()
-        if (ActivityCompat.shouldShowRequestPermissionRationale(activity, permissions[0])
-            || ActivityCompat.shouldShowRequestPermissionRationale(activity, permissions[1])
-        ) {
-            Log.d(TAG, "Retrying permission request")
-            retryRequest = false
-            requestPermission()
+        val shouldRetry = permissions.any {
+            ActivityCompat.shouldShowRequestPermissionRationale(activity, it)
         }
+        if (!shouldRetry) return false
+
+        Log.d(TAG, "Retrying permission request")
+        retryRequest = false
+        requestPermission()
+        return true
     }
 
     override fun onRequestPermissionsResult(
@@ -73,8 +90,10 @@ class PermissionController : PermissionManagerInterface,
         if (REQUEST_CODE != requestCode) return false
 
         // Check permission
-        val isPermissionGranted = (grantResults.isNotEmpty()
-                && grantResults[0] == PackageManager.PERMISSION_GRANTED)
+        val isPermissionGranted = arePermissionResultsGranted(
+            this.permissions,
+            grantResults
+        )
 
         Log.d(TAG, "Permission accepted: $isPermissionGranted")
 
@@ -82,7 +101,7 @@ class PermissionController : PermissionManagerInterface,
         val result = PluginProvider.result()
         when {
             isPermissionGranted -> result.success(true)
-            retryRequest -> retryRequestPermission()
+            retryRequest && retryRequestPermission() -> Unit
             else -> result.success(false)
         }
 

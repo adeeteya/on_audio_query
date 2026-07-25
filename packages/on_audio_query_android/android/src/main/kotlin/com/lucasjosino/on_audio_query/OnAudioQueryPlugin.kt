@@ -19,6 +19,7 @@ import android.os.Build
 import com.lucasjosino.on_audio_query.consts.Method
 import com.lucasjosino.on_audio_query.controllers.MethodController
 import com.lucasjosino.on_audio_query.controllers.PermissionController
+import com.lucasjosino.on_audio_query.utils.isValidMediaFilePath
 import io.flutter.Log
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
@@ -101,15 +102,26 @@ class OnAudioQueryPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                 val context = PluginProvider.context()
 
                 // Check if the given file is null or empty.
-                if (sPath == null || sPath.isEmpty()) {
-                    Log.w(TAG, "Method 'scan' was called with null or empty 'path'")
+                if (!isValidMediaFilePath(sPath)) {
+                    Log.w(TAG, "Method 'scan' requires a non-directory file path")
                     result.success(false)
+                    return
                 }
+                val mediaPath = sPath!!
 
-                // Scan and return
-                MediaScannerConnection.scanFile(context, arrayOf(sPath), null) { _, _ ->
-                    Log.d(TAG, "Scanned file: $sPath")
-                    result.success(true)
+                try {
+                    // Scan and return only after Android reports completion.
+                    MediaScannerConnection.scanFile(context, arrayOf(mediaPath), null) { _, _ ->
+                        Log.d(TAG, "Scanned file: $mediaPath")
+                        result.success(true)
+                    }
+                } catch (error: Exception) {
+                    Log.w(TAG, "Failed to scan media file: $mediaPath", error)
+                    result.error(
+                        "ScanMediaFailed",
+                        "Failed to scan the requested media file",
+                        error.message
+                    )
                 }
             }
 
@@ -138,6 +150,7 @@ class OnAudioQueryPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                         "Application doesn't have access to the library",
                         "Call the [permissionsRequest] method or install a external plugin to handle the app permission."
                     )
+                    return
                 }
 
                 methodController.find()

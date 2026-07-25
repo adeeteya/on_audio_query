@@ -8,7 +8,7 @@ import android.provider.MediaStore
 @SuppressLint("InlinedApi")
 // Ignore the [Data] deprecation because this plugin support older versions.
 @Suppress("DEPRECATION")
-fun songProjection(): Array<String> {
+fun songProjection(includeTitleKey: Boolean = false): Array<String> {
     val tmpProjection = arrayListOf(
         MediaStore.Audio.Media.DATA, // TODO: Deprecated
         MediaStore.Audio.Media.DISPLAY_NAME,
@@ -41,6 +41,10 @@ fun songProjection(): Array<String> {
     if (Build.VERSION.SDK_INT >= 30) {
         tmpProjection.add(MediaStore.Audio.Media.GENRE) // Only Api >= 30
         tmpProjection.add(MediaStore.Audio.Media.GENRE_ID) // Only Api >= 30
+    }
+
+    if (includeTitleKey) {
+        tmpProjection.add(MediaStore.Audio.Media.TITLE_KEY)
     }
 
     return tmpProjection.toTypedArray()

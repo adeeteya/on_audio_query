@@ -409,11 +409,7 @@ abstract class OnAudioQueryPlatform extends PlatformInterface {
   /// | `✔️` | `✔️` | `❌` | <br>
   ///
   /// See more about [platforms support](https://github.com/LucJosin/on_audio_query/blob/main/on_audio_query/PLATFORMS.md)
-  Future<bool> createPlaylist(
-    String name, {
-    String? author,
-    String? desc,
-  }) {
+  Future<bool> createPlaylist(String name, {String? author, String? desc}) {
     throw UnimplementedError('createPlaylist() has not been implemented.');
   }
 
@@ -569,7 +565,11 @@ abstract class OnAudioQueryPlatform extends PlatformInterface {
 
   // Others
 
-  /// Used to scan the given [path]
+  /// Used to scan one media file at the given filesystem [path].
+  ///
+  /// This is an opt-in Android operation for a file that was added, changed,
+  /// or deleted. Directories and storage roots are unsupported. Query methods
+  /// never invoke media scanning automatically.
   ///
   /// Will return:
   ///
@@ -577,9 +577,8 @@ abstract class OnAudioQueryPlatform extends PlatformInterface {
   ///
   /// Usage:
   ///
-  /// * When using the [Android] platform. After deleting a media using the [dart:io],
-  /// call this method to update the media. If the media was successfully and the path
-  /// not scanned. Will keep showing on [querySongs].
+  /// * When using the [Android] platform, call this method after changing a
+  /// media file with [dart:io] so Android can update its MediaStore state.
   ///
   /// Example:
   ///
@@ -605,6 +604,6 @@ abstract class OnAudioQueryPlatform extends PlatformInterface {
   ///
   /// See more about [platforms support](https://github.com/LucJosin/on_audio_query/blob/main/on_audio_query/PLATFORMS.md)
   Future<bool> scanMedia(String path) {
-    throw UnimplementedError('queryDeviceInfo() has not been implemented.');
+    throw UnimplementedError('scanMedia() has not been implemented.');
   }
 }

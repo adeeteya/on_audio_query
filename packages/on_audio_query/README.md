@@ -66,13 +66,12 @@ To use this plugin add the following code to your [AndroidManifest.xml](https://
 ```xml
 <manifest>
   
-  <!-- Android 12 or below  -->
-  <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
-  <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+  <!-- Android 12 or below -->
+  <uses-permission
+      android:name="android.permission.READ_EXTERNAL_STORAGE"
+      android:maxSdkVersion="32"/>
 
-  <!-- Android 13 or greater  -->
-  <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
-  <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>
+  <!-- Android 13 or greater -->
   <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>
 
 </manifest>
@@ -147,8 +146,10 @@ final OnAudioQuery _audioQuery = OnAudioQuery();
 
 #### scanMedia
 
-You'll use this method when updating a media from storage. This method will update the media 'state' and
-Android `MediaStore` will be able to know this 'state'.
+Use this opt-in Android method after adding, changing, or deleting one media file so
+`MediaStore` can update that file's state. Pass a filesystem path to a single file.
+Directories and storage roots are unsupported, and query methods never invoke media
+scanning automatically.
 
 ```dart
   someName() async {

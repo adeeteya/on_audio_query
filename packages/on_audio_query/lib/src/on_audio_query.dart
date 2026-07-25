@@ -19,9 +19,7 @@ class OnAudioQuery {
   /// The platform interface that drives this plugin
   static OnAudioQueryPlatform get platform => OnAudioQueryPlatform.instance;
 
-  dynamic _getArgs(
-    WithFiltersType withType,
-  ) {
+  dynamic _getArgs(WithFiltersType withType) {
     switch (withType) {
       case WithFiltersType.AUDIOS:
         return AudiosArgs.TITLE;
@@ -465,11 +463,7 @@ class OnAudioQuery {
     String? author,
     String? desc,
   }) async {
-    return platform.createPlaylist(
-      name,
-      author: author,
-      desc: desc,
-    );
+    return platform.createPlaylist(name, author: author, desc: desc);
   }
 
   /// Used to remove/delete a Playlist
@@ -626,7 +620,11 @@ class OnAudioQuery {
 
   // Others
 
-  /// Used to scan the given [path]
+  /// Used to scan one media file at the given filesystem [path].
+  ///
+  /// This is an opt-in Android operation for a file that was added, changed,
+  /// or deleted. Directories and storage roots are unsupported. Query methods
+  /// never invoke media scanning automatically.
   ///
   /// Will return:
   ///
@@ -634,9 +632,8 @@ class OnAudioQuery {
   ///
   /// Usage:
   ///
-  /// * When using the [Android] platform. After deleting a media using the [dart:io],
-  /// call this method to update the media. If the media was successfully and the path
-  /// not scanned. Will keep showing on [querySongs].
+  /// * When using the [Android] platform, call this method after changing a
+  /// media file with [dart:io] so Android can update its MediaStore state.
   ///
   /// Example:
   ///
