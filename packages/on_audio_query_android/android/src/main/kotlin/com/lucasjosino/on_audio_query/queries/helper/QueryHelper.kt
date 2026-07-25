@@ -6,8 +6,7 @@ import android.database.Cursor
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
-import android.util.Log
-import java.io.File
+import com.lucasjosino.on_audio_query.utils.parseDisplayName
 
 class QueryHelper {
     //This method will load some extra information about audio/song
@@ -15,12 +14,10 @@ class QueryHelper {
         uri: Uri,
         songData: MutableMap<String, Any?>
     ): MutableMap<String, Any?> {
-        val file = File(songData["_data"].toString())
+        val displayName = parseDisplayName(songData["_display_name"] as? String)
 
-        //Getting displayName without [Extension].
-        songData["_display_name_wo_ext"] = file.nameWithoutExtension
-        //Adding only the extension
-        songData["file_extension"] = file.extension
+        songData["_display_name_wo_ext"] = displayName.nameWithoutExtension
+        songData["file_extension"] = displayName.extension
 
         //A different type of "data"
         val tempUri = ContentUris.withAppendedId(uri, songData["_id"].toString().toLong())
@@ -136,89 +133,70 @@ class QueryHelper {
         return count
     }
 
-    // Ignore the [Data] deprecation because this plugin support older versions.
     @Suppress("DEPRECATION")
-    fun loadFirstItem(type: Int, id: Number, resolver: ContentResolver): String? {
+    fun loadFirstAudioUri(type: Int, id: Number, resolver: ContentResolver): Uri? {
+        if (type == 0) {
+            return ContentUris.withAppendedId(
+                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                id.toLong()
+            )
+        }
 
-        // We use almost the same method to 'query' the first item from Song/Album/Artist and we
-        // need to use a different uri when 'querying' from playlist.
-        // If [type] is something different, return null.
-        val selection: String? = when (type) {
-            0 -> MediaStore.Audio.Media._ID + "=?"
-            1 -> MediaStore.Audio.Media.ALBUM_ID + "=?"
-            2 -> null
-            3 -> MediaStore.Audio.Media.ARTIST_ID + "=?"
-            4 -> null
+        val queryUri: Uri
+        val idColumn: String
+        val selection: String?
+        val selectionArgs: Array<String>?
+
+        when (type) {
+            1 -> {
+                queryUri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+                idColumn = MediaStore.Audio.Media._ID
+                selection = "${MediaStore.Audio.Media.ALBUM_ID}=?"
+                selectionArgs = arrayOf(id.toString())
+            }
+            2 -> {
+                queryUri = MediaStore.Audio.Playlists.Members.getContentUri(
+                    "external",
+                    id.toLong()
+                )
+                idColumn = MediaStore.Audio.Playlists.Members.AUDIO_ID
+                selection = null
+                selectionArgs = null
+            }
+            3 -> {
+                queryUri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+                idColumn = MediaStore.Audio.Media._ID
+                selection = "${MediaStore.Audio.Media.ARTIST_ID}=?"
+                selectionArgs = arrayOf(id.toString())
+            }
+            4 -> {
+                queryUri = MediaStore.Audio.Genres.Members.getContentUri(
+                    "external",
+                    id.toLong()
+                )
+                idColumn = MediaStore.Audio.Genres.Members.AUDIO_ID
+                selection = null
+                selectionArgs = null
+            }
             else -> return null
         }
 
-        var dataOrId: String? = null
-        var cursor: Cursor? = null
-        try {
-            // Type 2 or 4 we use a different uri.
-            //
-            // Type 2 == Playlist
-            // Type 4 == Genre
-            //
-            // And the others we use the normal uri.
-            when (true) {
-                (type == 2 && selection == null) -> {
-                    cursor = resolver.query(
-                        MediaStore.Audio.Playlists.Members.getContentUri("external", id.toLong()),
-                        arrayOf(
-                            MediaStore.Audio.Playlists.Members.DATA,
-                            MediaStore.Audio.Playlists.Members.AUDIO_ID
-                        ),
-                        null,
-                        null,
-                        null
-                    )
-                }
-                (type == 4 && selection == null) -> {
-                    cursor = resolver.query(
-                        MediaStore.Audio.Genres.Members.getContentUri("external", id.toLong()),
-                        arrayOf(
-                            MediaStore.Audio.Genres.Members.DATA,
-                            MediaStore.Audio.Genres.Members.AUDIO_ID
-                        ),
-                        null,
-                        null,
-                        null
-                    )
-                }
-                else -> {
-                    cursor = resolver.query(
-                        MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-                        arrayOf(MediaStore.Audio.Media.DATA, MediaStore.Audio.Media._ID),
-                        selection,
-                        arrayOf(id.toString()),
-                        null
-                    )
-                }
-            }
-        } catch (e: Exception) {
-//            Log.i("on_audio_error", e.toString())
+        resolver.query(
+            queryUri,
+            arrayOf(idColumn),
+            selection,
+            selectionArgs,
+            null
+        )?.use { cursor ->
+            if (!cursor.moveToFirst()) return null
+            val audioId = cursor.getLong(cursor.getColumnIndexOrThrow(idColumn))
+            return ContentUris.withAppendedId(
+                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                audioId
+            )
         }
 
-        //
-        if (cursor != null) {
-            cursor.moveToFirst()
-            // Try / Catch to avoid problems. Everytime someone request the first song from a playlist and
-            // this playlist is empty will crash the app, so we just 'print' the error.
-            try {
-                dataOrId =
-                    if (Build.VERSION.SDK_INT >= 29 && (type == 2 || type == 3 || type == 4)) {
-                        cursor.getString(1)
-                    } else {
-                        cursor.getString(0)
-                    }
-            } catch (e: Exception) {
-                Log.i("on_audio_error", e.toString())
-            }
-        }
-        cursor?.close()
-
-        return dataOrId
+        return null
     }
 
     fun chooseWithFilterType(uri: Uri, itemProperty: String, cursor: Cursor): Any? {

@@ -206,6 +206,24 @@ class MethodChannelOnAudioQuery extends OnAudioQueryPlatform {
   }
 
   @override
+  Future<Uint8List?> queryArtworkByUri(
+    String contentUri, {
+    int size = 200,
+    int quality = 50,
+    ArtworkFormat format = ArtworkFormat.JPEG,
+  }) async {
+    return _channel.invokeMethod<Uint8List>(
+      "queryArtworkByUri",
+      {
+        "uri": contentUri,
+        "format": format.index,
+        "size": size,
+        "quality": quality,
+      },
+    );
+  }
+
+  @override
   Future<List<SongModel>> queryFromFolder(
     String path, {
     SongSortType? sortType,

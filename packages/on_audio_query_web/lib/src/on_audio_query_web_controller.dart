@@ -624,7 +624,9 @@ class _OnAudioQueryWebController {
       }
 
       if (id == tmpId) {
-        MP3Instance mp3instance = await _getMP3(song.data);
+        final legacyData = song.dataOrNull;
+        if (legacyData == null) return null;
+        MP3Instance mp3instance = await _getMP3(legacyData);
         if (mp3instance.parseTagsSync()) {
           Map<String, dynamic>? data = mp3instance.getMetaTags();
           return data != null ? base64Decode(data["APIC"]["base64"]) : null;

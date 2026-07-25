@@ -8,11 +8,28 @@ class SongModel {
   /// Return song [id]
   int get id => _info["_id"];
 
-  /// Return song [data]
+  /// Return the legacy direct filesystem path for this song.
+  ///
+  /// Prefer [uri] for content access. Direct paths are not reliable under
+  /// Android scoped storage. Use [dataOrNull] while migrating existing code.
+  @Deprecated('Use uri for content access or dataOrNull for legacy paths.')
   String get data => _info["_data"];
+
+  /// Return the legacy direct filesystem path when one is available.
+  String? get dataOrNull => _info["_data"];
 
   /// Return song [uri]
   String? get uri => _info["_uri"];
+
+  /// Return the song's organizational path relative to its Android volume.
+  ///
+  /// Available on Android 10 and newer. This is not a filesystem access path.
+  String? get relativePath => _info["relative_path"];
+
+  /// Return the Android MediaStore volume containing this song.
+  ///
+  /// Available on Android 10 and newer.
+  String? get volumeName => _info["volume_name"];
 
   /// Return song [displayName]
   String get displayName => _info["_display_name"];

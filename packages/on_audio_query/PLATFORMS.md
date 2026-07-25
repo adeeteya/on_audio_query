@@ -45,6 +45,7 @@ Here you'll see a extra information about every method/type etc..
 | `queryAudiosFrom` | `✔️` | `✔️` | `✔️` | <br>
 | `queryWithFilters` | `✔️` | `✔️` | `✔️` | <br>
 | `queryArtwork` | `✔️` | `✔️` | `✔️` | <br>
+| `queryArtworkByUri` | `✔️` | `❌` | `❌` | <br>
 | `createPlaylist` | `✔️` | `✔️` | `❌` | <br>
 | `removePlaylist` | `✔️` | `❌` | `❌` | <br>
 | `addToPlaylist` | `✔️` | `✔️` | `❌` | <br>
@@ -267,6 +268,5 @@ Here you'll see a extra information about every method/type etc..
 | `version` | `✔️` | `✔️` | `✔️` | <br>
 | `type` | `✔️` | `✔️` | `✔️` | <br>
 | `model` | `✔️` | `✔️` | `❌` | <br>
-
 
 

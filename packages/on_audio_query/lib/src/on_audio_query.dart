@@ -353,8 +353,10 @@ class OnAudioQuery {
   ///
   /// Important:
   ///
-  /// * This method is only necessary for API >= 29 [Android Q/10].
-  /// * If [queryArtwork] is called in Android below Q/10, will return null.
+  /// * On Android, prefer [queryArtworkByUri] for songs returned from multiple
+  /// storage volumes. MediaStore IDs are not volume-qualified.
+  /// * Android 10 and newer use MediaStore thumbnails. Older Android versions
+  /// read and downsample embedded artwork.
   /// * If [format] is null, will be set to [JPEG] for better performance.
   /// * If [size] is null, will be set to [200] for better performance
   /// * We need this method separated from [querySongs/queryAudios] because
@@ -380,6 +382,27 @@ class OnAudioQuery {
       format: format,
       size: size,
       quality: quality,
+    );
+  }
+
+  /// Returns artwork for an Android MediaStore audio [contentUri].
+  ///
+  /// Use [SongModel.uri] with this method for reliable artwork lookup when
+  /// songs can come from primary storage, SD cards, or USB volumes. The older
+  /// ID-based [queryArtwork] method remains available for compatibility.
+  ///
+  /// This method is supported on Android only.
+  Future<Uint8List?> queryArtworkByUri(
+    String contentUri, {
+    int size = 200,
+    int quality = 50,
+    ArtworkFormat format = ArtworkFormat.JPEG,
+  }) {
+    return platform.queryArtworkByUri(
+      contentUri,
+      size: size,
+      quality: quality,
+      format: format,
     );
   }
 

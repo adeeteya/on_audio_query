@@ -12,6 +12,7 @@ Copyright: © 2021, Lucas Josino. All rights reserved.
 =============
 */
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 
@@ -27,7 +28,7 @@ class Songs extends StatefulWidget {
   const Songs({Key? key}) : super(key: key);
 
   @override
-  _SongsState createState() => _SongsState();
+  State<Songs> createState() => _SongsState();
 }
 
 class _SongsState extends State<Songs> {
@@ -53,14 +54,14 @@ class _SongsState extends State<Songs> {
     checkAndRequestPermissions();
   }
 
-  checkAndRequestPermissions({bool retry = false}) async {
+  Future<void> checkAndRequestPermissions({bool retry = false}) async {
     // The param 'retryRequest' is false, by default.
     _hasPermission = await _audioQuery.checkAndRequest(
       retryRequest: retry,
     );
 
     // Only call update the UI if application has all required permissions.
-    _hasPermission ? setState(() {}) : null;
+    if (_hasPermission) setState(() {});
   }
 
   @override
@@ -105,11 +106,14 @@ class _SongsState extends State<Songs> {
                         subtitle: Text(item.data![index].artist ?? "No Artist"),
                         trailing: Text("$index/${item.data!.length}"),
                         // This Widget will query/load image.
-                        // You can use/create your own widget/method using [queryArtwork].
+                        // Android uses the volume-specific URI when available.
                         leading: QueryArtworkWidget(
                           controller: _audioQuery,
                           id: item.data![index].id,
                           type: ArtworkType.AUDIO,
+                          uri: defaultTargetPlatform == TargetPlatform.android
+                              ? item.data![index].uri
+                              : null,
                         ),
                       );
                     },

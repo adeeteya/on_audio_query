@@ -30,6 +30,12 @@ class QueryArtworkWidget extends StatelessWidget {
   /// All Audio/Song has a unique [id].
   final int id;
 
+  /// Android MediaStore content URI for volume-safe audio artwork lookup.
+  ///
+  /// When provided, [id] and [type] are ignored and
+  /// [OnAudioQuery.queryArtworkByUri] is used.
+  final String? uri;
+
   /// Used to call the platform specific method.
   ///
   /// Important:
@@ -264,6 +270,7 @@ class QueryArtworkWidget extends StatelessWidget {
     super.key,
     required this.id,
     required this.type,
+    this.uri,
     this.quality = 50,
     this.controller,
     this.format = ArtworkFormat.JPEG,
@@ -286,14 +293,23 @@ class QueryArtworkWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final artworkFuture = uri == null
+        ? (controller ?? OnAudioQuery()).queryArtwork(
+            id,
+            type,
+            format: format,
+            size: size,
+            quality: quality,
+          )
+        : (controller ?? OnAudioQuery()).queryArtworkByUri(
+            uri!,
+            format: format,
+            size: size,
+            quality: quality,
+          );
+
     return FutureBuilder<Uint8List?>(
-      future: (controller ?? OnAudioQuery()).queryArtwork(
-        id,
-        type,
-        format: format,
-        size: size,
-        quality: quality,
-      ),
+      future: artworkFuture,
       builder: (context, item) {
         if (item.data != null && item.data!.isNotEmpty) {
           return ClipRRect(

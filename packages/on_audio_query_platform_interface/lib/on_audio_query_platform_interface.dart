@@ -315,8 +315,10 @@ abstract class OnAudioQueryPlatform extends PlatformInterface {
   ///
   /// Important:
   ///
-  /// * This method is only necessary for API >= 29 [Android Q/10].
-  /// * If [queryArtwork] is called in Android below Q/10, will return null.
+  /// * On Android, prefer [queryArtworkByUri] for songs returned from multiple
+  /// storage volumes. MediaStore IDs are not volume-qualified.
+  /// * Android 10 and newer use MediaStore thumbnails. Older Android versions
+  /// read and downsample embedded artwork.
   /// * If [format] is null, will be set to [JPEG] for better performance.
   /// * If [size] is null, will be set to [200] for better performance
   /// * We need this method separated from [querySongs/queryAudios] because
@@ -337,6 +339,22 @@ abstract class OnAudioQueryPlatform extends PlatformInterface {
     int? quality,
   }) {
     throw UnimplementedError('queryArtwork() has not been implemented.');
+  }
+
+  /// Returns artwork for an Android MediaStore audio [contentUri].
+  ///
+  /// Unlike [queryArtwork], this method preserves the storage-volume identity
+  /// contained in a song's content URI. Use it with [SongModel.uri] when
+  /// querying artwork for songs returned from multiple Android volumes.
+  ///
+  /// This method is supported on Android only.
+  Future<Uint8List?> queryArtworkByUri(
+    String contentUri, {
+    int size = 200,
+    int quality = 50,
+    ArtworkFormat format = ArtworkFormat.JPEG,
+  }) {
+    throw UnimplementedError('queryArtworkByUri() has not been implemented.');
   }
 
   /// Used to return Songs Info from a specific [Folder] based in [SongModel].

@@ -16,6 +16,7 @@ class MethodController() {
             Method.QUERY_PLAYLISTS -> PlaylistQuery().queryPlaylists()
             Method.QUERY_GENRES -> GenreQuery().queryGenres()
             Method.QUERY_ARTWORK -> ArtworkQuery().queryArtwork()
+            Method.QUERY_ARTWORK_BY_URI -> ArtworkQuery().queryArtworkByUri()
             Method.QUERY_AUDIOS_FROM -> AudioFromQuery().querySongsFrom()
             Method.QUERY_WITH_FILTERS -> WithFiltersQuery().queryWithFilters()
             Method.QUERY_ALL_PATHS -> AllPathQuery().queryAllPath()

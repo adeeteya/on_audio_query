@@ -34,6 +34,7 @@
 | `queryAudiosFrom` | `✔️` | `✔️` | `✔️` | <br>
 | `queryWithFilters` | `✔️` | `✔️` | `✔️` | <br>
 | `queryArtwork` | `✔️` | `✔️` | `✔️` | <br>
+| `queryArtworkByUri` | `✔️` | `❌` | `❌` | <br>
 | `createPlaylist` | `✔️` | `✔️` | `❌` | <br>
 | `removePlaylist` | `✔️` | `❌` | `❌` | <br>
 | `addToPlaylist` | `✔️` | `✔️` | `❌` | <br>
@@ -177,6 +178,16 @@ scanning automatically.
         ...,
       );
   }
+```
+
+For songs returned from Android primary storage, SD cards, or USB volumes,
+prefer the volume-specific content URI:
+
+```dart
+final SongModel song = songs.first;
+final Uint8List? artwork = song.uri == null
+    ? null
+    : await _audioQuery.queryArtworkByUri(song.uri!);
 ```
 
 Or you can use a basic and custom Widget.

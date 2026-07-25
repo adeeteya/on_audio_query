@@ -36,6 +36,8 @@ fun songProjection(includeTitleKey: Boolean = false): Array<String> {
 
     if (Build.VERSION.SDK_INT >= 29) {
         tmpProjection.add(MediaStore.Audio.Media.IS_AUDIOBOOK) // Only Api >= 29
+        tmpProjection.add(MediaStore.Audio.Media.RELATIVE_PATH)
+        tmpProjection.add(MediaStore.Audio.Media.VOLUME_NAME)
     }
 
     if (Build.VERSION.SDK_INT >= 30) {
