@@ -38,6 +38,9 @@ Here you'll see a extra information about every method/type etc..
 |  Methods  |   Android   |   IOS   |   Web   |
 |--------------|-----------------|-----------------|-----------------|
 | `querySongs` | `✔️` | `✔️` | `✔️` | <br>
+| `querySongsPage` | `✔️` | `❌` | `❌` | <br>
+| `queryAudioVolumes` | `✔️` | `❌` | `❌` | <br>
+| `watchAudioLibrary` | `✔️` | `❌` | `❌` | <br>
 | `queryAlbums` | `✔️` | `✔️` | `✔️` | <br>
 | `queryArtists` | `✔️` | `✔️` | `✔️` | <br>
 | `queryPlaylists` | `✔️` | `✔️` | `❌` | <br>
@@ -268,5 +271,4 @@ Here you'll see a extra information about every method/type etc..
 | `version` | `✔️` | `✔️` | `✔️` | <br>
 | `type` | `✔️` | `✔️` | `✔️` | <br>
 | `model` | `✔️` | `✔️` | `❌` | <br>
-
 

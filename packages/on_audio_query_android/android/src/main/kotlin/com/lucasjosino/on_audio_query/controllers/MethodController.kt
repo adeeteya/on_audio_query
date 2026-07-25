@@ -11,6 +11,9 @@ class MethodController() {
         when (PluginProvider.call().method) {
             //Query methods
             Method.QUERY_AUDIOS -> AudioQuery().querySongs()
+            Method.QUERY_AUDIOS_WITH_OPTIONS -> AudioQuery().querySongs(withOptions = true)
+            Method.QUERY_AUDIOS_PAGE -> AudioQuery().querySongsPage()
+            Method.QUERY_AUDIO_VOLUMES -> AudioVolumeQuery().queryAudioVolumes()
             Method.QUERY_ALBUMS -> AlbumQuery().queryAlbums()
             Method.QUERY_ARTISTS -> ArtistQuery().queryArtists()
             Method.QUERY_PLAYLISTS -> PlaylistQuery().queryPlaylists()

@@ -102,6 +102,46 @@ abstract class OnAudioQueryPlatform extends PlatformInterface {
     throw UnimplementedError('querySongs() has not been implemented.');
   }
 
+  /// Android-only typed variant used when [AudioQueryOptions] are supplied.
+  ///
+  /// This is separate from [querySongs] so existing platform implementations
+  /// do not need to change their method override.
+  Future<List<SongModel>> querySongsWithOptions({
+    required AudioQueryOptions options,
+    SongSortType? sortType,
+    OrderType? orderType,
+    UriType? uriType,
+    bool? ignoreCase,
+    String? path,
+  }) {
+    throw UnsupportedError(
+      'Typed audio queries are not supported on this platform.',
+    );
+  }
+
+  /// Return one Android MediaStore page.
+  Future<SongPage> querySongsPage({
+    AudioQueryOptions? options,
+    int limit = 500,
+    int offset = 0,
+    SongSortType? sortType,
+    OrderType? orderType,
+  }) {
+    throw UnsupportedError('Paged audio queries are Android-only.');
+  }
+
+  /// Return mounted and recently disconnected Android MediaStore volumes.
+  Future<List<AudioVolume>> queryAudioVolumes() {
+    throw UnsupportedError('Audio volume queries are Android-only.');
+  }
+
+  /// Watch raw Android MediaStore audio notifications.
+  Stream<AudioLibraryChange> watchAudioLibrary() {
+    return Stream<AudioLibraryChange>.error(
+      UnsupportedError('Audio library change streams are Android-only.'),
+    );
+  }
+
   /// Used to return Albums Info based in [AlbumModel].
   ///
   /// Parameters:

@@ -26,6 +26,7 @@ import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
 
@@ -42,6 +43,8 @@ class OnAudioQueryPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
 
         // Method channel name.
         private const val CHANNEL_NAME = "com.lucasjosino.on_audio_query"
+        private const val CHANGE_CHANNEL_NAME =
+            "com.lucasjosino.on_audio_query/audio_library_changes"
     }
 
     private var permissionController = PermissionController()
@@ -50,6 +53,8 @@ class OnAudioQueryPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     private var binding: ActivityPluginBinding? = null
 
     private lateinit var channel: MethodChannel
+    private lateinit var changeChannel: EventChannel
+    private lateinit var changeHandler: AudioLibraryChangeHandler
 
     // Dart <-> Kotlin communication
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
@@ -58,6 +63,14 @@ class OnAudioQueryPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         // Setup the method channel communication.
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, CHANNEL_NAME)
         channel.setMethodCallHandler(this)
+        changeHandler = AudioLibraryChangeHandler(
+            flutterPluginBinding.applicationContext
+        )
+        changeChannel = EventChannel(
+            flutterPluginBinding.binaryMessenger,
+            CHANGE_CHANNEL_NAME
+        )
+        changeChannel.setStreamHandler(changeHandler)
     }
 
     // Methods will always follow the same route:
@@ -163,6 +176,8 @@ class OnAudioQueryPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         Log.i(TAG, "Detached from engine")
         channel.setMethodCallHandler(null)
+        changeChannel.setStreamHandler(null)
+        changeHandler.dispose()
     }
 
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {

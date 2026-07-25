@@ -10,6 +10,9 @@ object Method {
 
     // Query methods
     const val QUERY_AUDIOS = "querySongs"
+    const val QUERY_AUDIOS_WITH_OPTIONS = "querySongsWithOptions"
+    const val QUERY_AUDIOS_PAGE = "querySongsPage"
+    const val QUERY_AUDIO_VOLUMES = "queryAudioVolumes"
     const val QUERY_ALBUMS = "queryAlbums"
     const val QUERY_ARTISTS = "queryArtists"
     const val QUERY_GENRES = "queryGenres"

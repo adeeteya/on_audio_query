@@ -19,6 +19,14 @@ class OnAudioQuery {
   /// The platform interface that drives this plugin
   static OnAudioQueryPlatform get platform => OnAudioQueryPlatform.instance;
 
+  void _requireAndroidSynchronizationSupport() {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+      throw UnsupportedError(
+        'MediaStore synchronization APIs are only supported on Android.',
+      );
+    }
+  }
+
   dynamic _getArgs(WithFiltersType withType) {
     switch (withType) {
       case WithFiltersType.AUDIOS:
@@ -77,6 +85,7 @@ class OnAudioQuery {
   /// * [uriType] is used to define if songs will be catch in [EXTERNAL] or [INTERNAL] storage.
   /// * [ignoreCase] is used to define if sort will ignore the lowercase or not.
   /// * [path] is used to define where the songs will be 'queried'.
+  /// * [options] provides typed Android MediaStore filters.
   ///
   /// Important:
   ///
@@ -85,6 +94,7 @@ class OnAudioQuery {
   /// * If [uriType] is null, will be set to [EXTERNAL].
   /// * If [ignoreCase] is null, will be set to [true].
   /// * If [path] is null, will be set to the default platform [path].
+  /// * Supplying [options] uses the Android-only typed query implementation.
   ///
   /// Platforms:
   ///
@@ -99,7 +109,19 @@ class OnAudioQuery {
     UriType? uriType,
     bool? ignoreCase,
     String? path,
+    AudioQueryOptions? options,
   }) async {
+    if (options != null) {
+      _requireAndroidSynchronizationSupport();
+      return platform.querySongsWithOptions(
+        options: options,
+        sortType: sortType,
+        orderType: orderType,
+        uriType: uriType,
+        ignoreCase: ignoreCase,
+        path: path,
+      );
+    }
     return platform.querySongs(
       sortType: sortType,
       orderType: orderType,
@@ -107,6 +129,42 @@ class OnAudioQuery {
       ignoreCase: ignoreCase,
       path: path,
     );
+  }
+
+  /// Return one filtered Android MediaStore page.
+  Future<SongPage> querySongsPage({
+    AudioQueryOptions? options,
+    int limit = 500,
+    int offset = 0,
+    SongSortType? sortType,
+    OrderType? orderType,
+  }) {
+    _requireAndroidSynchronizationSupport();
+    if (limit <= 0) {
+      throw ArgumentError.value(limit, 'limit', 'Must be greater than zero.');
+    }
+    if (offset < 0) {
+      throw ArgumentError.value(offset, 'offset', 'Must not be negative.');
+    }
+    return platform.querySongsPage(
+      options: options,
+      limit: limit,
+      offset: offset,
+      sortType: sortType,
+      orderType: orderType,
+    );
+  }
+
+  /// Return mounted and recently disconnected Android MediaStore volumes.
+  Future<List<AudioVolume>> queryAudioVolumes() {
+    _requireAndroidSynchronizationSupport();
+    return platform.queryAudioVolumes();
+  }
+
+  /// Watch raw Android MediaStore audio changes without package-level debounce.
+  Stream<AudioLibraryChange> watchAudioLibrary() {
+    _requireAndroidSynchronizationSupport();
+    return platform.watchAudioLibrary();
   }
 
   /// Used to return Albums Info based in [AlbumModel].

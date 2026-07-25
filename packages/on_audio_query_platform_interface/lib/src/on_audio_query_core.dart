@@ -5,6 +5,7 @@ export 'extensions/models_extensions.dart';
 
 //Models
 export 'models/song_model.dart';
+export 'models/audio_sync_models.dart';
 export 'models/album_model.dart';
 export 'models/artist_model.dart';
 export 'models/playlist_model.dart';

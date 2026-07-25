@@ -4,6 +4,7 @@ import android.content.ContentResolver
 import android.content.Context
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.provider.MediaStore
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -19,60 +20,47 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/** OnAudiosQuery */
+/** MediaStore audio queries. */
 class AudioQuery : ViewModel() {
 
     companion object {
         private const val TAG = "OnAudiosQuery"
     }
 
-    // Main parameters
     private val helper = QueryHelper()
-    private var selection: String? = null
 
-    private lateinit var sortType: String
-    private lateinit var sortSpec: SongSortSpec
-    private lateinit var resolver: ContentResolver
-
-    /**
-     * Method to "query" all songs.
-     */
-    fun querySongs() {
+    fun querySongs(withOptions: Boolean = false) {
         val call = PluginProvider.call()
         val result = PluginProvider.result()
         val context = PluginProvider.context()
-        this.resolver = context.contentResolver
-
-        // Sort: Type and Order.
-        val requestedSortType = call.argument<Int>("sortType")
-        val requestedOrderType = call.argument<Int>("orderType")!!
-        val ignoreCase = call.argument<Boolean>("ignoreCase")!!
-        sortSpec = resolveSongSortSpec(
-            requestedSortType,
-            requestedOrderType,
-            ignoreCase
+        val resolver = context.contentResolver
+        val sortSpec = resolveSongSortSpec(
+            call.argument("sortType"),
+            call.argument<Int>("orderType")!!,
+            call.argument<Boolean>("ignoreCase")!!
         )
-        sortType = sortSpec.mediaStoreOrder
-
-        // Reset selection filter every call and re-apply the optional path filter.
-        selection = null
-        val projection = songProjection(includeTitleKey = sortSpec.transientColumn)
-        val pathFilter = call.argument<String>("path")
-        if (!pathFilter.isNullOrEmpty()) {
-            selection = "${projection[0]} like '%$pathFilter/%'"
+        val options = if (withOptions) {
+            NativeAudioQueryOptions.fromMap(call.argument("options"))
+        } else {
+            null
         }
+        if (!validateOptions(options, result)) return
 
-        val uriType = call.argument<Int>("uri")!!
-        val queryUris = resolveAudioUris(context, uriType)
+        val audioSelection = buildAudioSelection(
+            options,
+            call.argument("path")
+        )
+        val projection = songProjection(includeTitleKey = sortSpec.transientColumn)
+        val queryUris = resolveAudioUris(context, call.argument<Int>("uri")!!)
 
-        Log.d(TAG, "Query config: ")
-        Log.d(TAG, "\tsortType: $sortType")
-        Log.d(TAG, "\tselection: $selection")
-        Log.d(TAG, "\turi(s): ${queryUris.joinToString()}")
-
-        // Query everything in background for a better performance.
         viewModelScope.launch {
-            val queryResult = loadSongs(queryUris, projection)
+            val queryResult = loadAllSongs(
+                resolver,
+                queryUris,
+                projection,
+                audioSelection,
+                sortSpec
+            )
             if (queryResult.successfulVolumes == 0) {
                 result.error(
                     "AudioQueryFailed",
@@ -85,87 +73,220 @@ class AudioQuery : ViewModel() {
         }
     }
 
-    //Loading in Background
-    private suspend fun loadSongs(
+    fun querySongsPage() {
+        val call = PluginProvider.call()
+        val result = PluginProvider.result()
+        val context = PluginProvider.context()
+        val resolver = context.contentResolver
+        val limit = call.argument<Int>("limit") ?: 500
+        val offset = call.argument<Int>("offset") ?: 0
+        if (limit <= 0 || offset < 0) {
+            result.error(
+                "InvalidPagingArguments",
+                "limit must be positive and offset must not be negative",
+                null
+            )
+            return
+        }
+
+        val options = NativeAudioQueryOptions.fromMap(call.argument("options"))
+        if (!validateOptions(options, result)) return
+        val sortSpec = resolveSongSortSpec(
+            call.argument("sortType"),
+            call.argument<Int>("orderType")!!,
+            call.argument<Boolean>("ignoreCase")!!
+        )
+        val audioSelection = buildAudioSelection(options, null)
+        val projection = songProjection(includeTitleKey = sortSpec.transientColumn)
+        val uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
+        } else {
+            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+        }
+
+        viewModelScope.launch {
+            try {
+                val page = loadSongPage(
+                    resolver,
+                    uri,
+                    projection,
+                    audioSelection,
+                    sortSpec,
+                    limit,
+                    offset
+                )
+                result.success(page)
+            } catch (error: Exception) {
+                if (error is CancellationException) throw error
+                Log.w(TAG, "Failed to load a MediaStore song page", error)
+                result.error("AudioPageQueryFailed", error.message, null)
+            }
+        }
+    }
+
+    private fun validateOptions(
+        options: NativeAudioQueryOptions?,
+        result: io.flutter.plugin.common.MethodChannel.Result
+    ): Boolean {
+        if (options?.generationModifiedAfter != null &&
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.R
+        ) {
+            result.error(
+                "UnsupportedAudioQueryOption",
+                "generationModifiedAfter requires Android 11 or newer",
+                null
+            )
+            return false
+        }
+        if ((options?.minimumDuration ?: 0) < 0 ||
+            (options?.modifiedAfter ?: 0) < 0 ||
+            (options?.generationModifiedAfter ?: 0) < 0
+        ) {
+            result.error(
+                "InvalidAudioQueryOption",
+                "Duration and synchronization thresholds must not be negative",
+                null
+            )
+            return false
+        }
+        return true
+    }
+
+    private suspend fun loadAllSongs(
+        resolver: ContentResolver,
         uris: List<Uri>,
-        projection: Array<String>
-    ): AudioQueryResult =
-        withContext(Dispatchers.IO) {
-            val songList: ArrayList<MutableMap<String, Any?>> = ArrayList()
-            var successfulVolumes = 0
-            var failedVolumes = 0
+        projection: Array<String>,
+        selection: AudioSelection,
+        sortSpec: SongSortSpec
+    ): AudioQueryResult = withContext(Dispatchers.IO) {
+        val songs = arrayListOf<MutableMap<String, Any?>>()
+        var successfulVolumes = 0
+        var failedVolumes = 0
 
-            for (targetUri in uris) {
-                try {
-                    val cursor = resolver.query(
-                        targetUri,
-                        projection,
-                        selection,
-                        null,
-                        sortType
-                    )
-                    if (cursor == null) {
-                        failedVolumes++
-                        Log.w(TAG, "MediaStore returned a null cursor for $targetUri")
-                        continue
-                    }
-
-                    val volumeSongs: ArrayList<MutableMap<String, Any?>> = ArrayList()
-                    cursor.use {
-                        Log.d(TAG, "Cursor count for $targetUri: ${it.count}")
-
-                        // For each item(song) inside this "cursor", take one and "format"
-                        // into a 'Map<String, dynamic>'.
-                        while (it.moveToNext()) {
-                            val tempData: MutableMap<String, Any?> = HashMap()
-
-                            for (audioMedia in it.columnNames) {
-                                tempData[audioMedia] = helper.loadSongItem(audioMedia, it)
-                            }
-
-                            //Get a extra information from audio, e.g: extension, uri, etc..
-                            val tempExtraData = helper.loadSongExtraInfo(targetUri, tempData)
-                            tempData.putAll(tempExtraData)
-
-                            volumeSongs.add(tempData)
-                        }
-                    }
-
-                    songList.addAll(volumeSongs)
-                    successfulVolumes++
-                } catch (error: Exception) {
-                    if (error is CancellationException) throw error
+        for (targetUri in uris) {
+            try {
+                val cursor = resolver.query(
+                    targetUri,
+                    projection,
+                    selection.selection,
+                    selection.arguments,
+                    sortSpec.mediaStoreOrder
+                )
+                if (cursor == null) {
                     failedVolumes++
-                    Log.w(TAG, "Failed to query MediaStore volume $targetUri", error)
+                    continue
+                }
+                cursor.use {
+                    while (it.moveToNext()) {
+                        songs += loadSong(it, targetUri)
+                    }
+                }
+                successfulVolumes++
+            } catch (error: Exception) {
+                if (error is CancellationException) throw error
+                failedVolumes++
+                Log.w(TAG, "Failed to query MediaStore volume $targetUri", error)
+            }
+        }
+
+        songs.sortWith(sortSpec.comparator())
+        if (sortSpec.transientColumn) {
+            songs.forEach { it.remove(sortSpec.column) }
+        }
+        AudioQueryResult(songs, successfulVolumes, failedVolumes)
+    }
+
+    private suspend fun loadSongPage(
+        resolver: ContentResolver,
+        uri: Uri,
+        projection: Array<String>,
+        selection: AudioSelection,
+        sortSpec: SongSortSpec,
+        limit: Int,
+        offset: Int
+    ): Map<String, Any?> = withContext(Dispatchers.IO) {
+        val totalCount = resolver.query(
+            uri,
+            arrayOf(MediaStore.Audio.Media._ID),
+            selection.selection,
+            selection.arguments,
+            null
+        )?.use { it.count } ?: 0
+
+        val songs = arrayListOf<MutableMap<String, Any?>>()
+        val stableSort = stableSortOrder(sortSpec)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val args = Bundle().apply {
+                selection.selection?.let {
+                    putString(ContentResolver.QUERY_ARG_SQL_SELECTION, it)
+                }
+                selection.arguments?.let {
+                    putStringArray(ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS, it)
+                }
+                putString(ContentResolver.QUERY_ARG_SQL_SORT_ORDER, stableSort)
+                putInt(ContentResolver.QUERY_ARG_LIMIT, limit)
+                putInt(ContentResolver.QUERY_ARG_OFFSET, offset)
+            }
+            resolver.query(uri, projection, args, null)?.use { cursor ->
+                while (cursor.moveToNext() && songs.size < limit) {
+                    songs += loadSong(cursor, uri)
                 }
             }
-
-            songList.sortWith(sortSpec.comparator())
-            if (sortSpec.transientColumn) {
-                songList.forEach { it.remove(sortSpec.column) }
+        } else {
+            resolver.query(
+                uri,
+                projection,
+                selection.selection,
+                selection.arguments,
+                stableSort
+            )?.use { cursor ->
+                if (offset == 0 || cursor.moveToPosition(offset - 1)) {
+                    while (cursor.moveToNext() && songs.size < limit) {
+                        songs += loadSong(cursor, uri)
+                    }
+                }
             }
-
-            return@withContext AudioQueryResult(
-                songs = songList,
-                successfulVolumes = successfulVolumes,
-                failedVolumes = failedVolumes
-            )
         }
+
+        if (sortSpec.transientColumn) {
+            songs.forEach { it.remove(sortSpec.column) }
+        }
+        mapOf(
+            "songs" to songs,
+            "nextOffset" to nextPageOffset(offset, songs.size, totalCount),
+            "totalCount" to totalCount
+        )
+    }
+
+    private fun loadSong(
+        cursor: android.database.Cursor,
+        queryUri: Uri
+    ): MutableMap<String, Any?> {
+        val song = hashMapOf<String, Any?>()
+        for (column in cursor.columnNames) {
+            song[column] = helper.loadSongItem(column, cursor)
+        }
+        song.putAll(helper.loadSongExtraInfo(queryUri, song))
+        return song
+    }
+
+    private fun stableSortOrder(sortSpec: SongSortSpec): String {
+        val tieBreakers = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            "${MediaStore.MediaColumns.VOLUME_NAME} ASC, ${MediaStore.Audio.Media._ID} ASC"
+        } else {
+            "${MediaStore.Audio.Media._ID} ASC"
+        }
+        return "${sortSpec.mediaStoreOrder}, $tieBreakers"
+    }
 
     private fun resolveAudioUris(context: Context, uriType: Int): List<Uri> {
-        if (uriType != 0) {
-            return listOf(checkAudiosUriType(uriType))
-        }
-
+        if (uriType != 0) return listOf(checkAudiosUriType(uriType))
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val volumeNames = MediaStore.getExternalVolumeNames(context)
-            if (volumeNames.isNotEmpty()) {
-                return volumeNames.map { volume ->
-                    MediaStore.Audio.Media.getContentUri(volume)
-                }
+            val volumes = MediaStore.getExternalVolumeNames(context)
+            if (volumes.isNotEmpty()) {
+                return volumes.map(MediaStore.Audio.Media::getContentUri)
             }
         }
-
         return listOf(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI)
     }
 
@@ -174,4 +295,9 @@ class AudioQuery : ViewModel() {
         val successfulVolumes: Int,
         val failedVolumes: Int
     )
+}
+
+internal fun nextPageOffset(offset: Int, pageSize: Int, totalCount: Int): Int? {
+    val consumed = offset + pageSize
+    return if (consumed < totalCount) consumed else null
 }

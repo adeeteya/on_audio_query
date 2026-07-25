@@ -27,6 +27,9 @@
 |  Methods  |   Android   |   IOS   |   Web   |
 |-------|:----------:|:----------:|:----------:|
 | `querySongs` | `✔️` | `✔️` | `✔️` | <br>
+| `querySongsPage` | `✔️` | `❌` | `❌` | <br>
+| `queryAudioVolumes` | `✔️` | `❌` | `❌` | <br>
+| `watchAudioLibrary` | `✔️` | `❌` | `❌` | <br>
 | `queryAlbums` | `✔️` | `✔️` | `✔️` | <br>
 | `queryArtists` | `✔️` | `✔️` | `✔️` | <br>
 | `queryPlaylists` | `✔️` | `✔️` | `❌` | <br>
@@ -105,6 +108,36 @@ To use this plugin add the following code to your [Info.plist](https://github.co
 ## Overview:
 
 All types of methods on this plugin:
+
+### Android library synchronization
+
+Use typed options to avoid raw SQL and page large MediaStore libraries without
+copying the complete catalog through a method channel:
+
+```dart
+final options = AudioQueryOptions(
+  isMusic: true,
+  includeAlarms: false,
+  includeNotifications: false,
+  includeRingtones: false,
+  minimumDuration: 30000,
+);
+
+SongPage page = await _audioQuery.querySongsPage(
+  options: options,
+  limit: 500,
+);
+```
+
+`queryAudioVolumes()` reports mounted volumes and, on Android 11+, recently
+disconnected volumes. Compare a volume's opaque `version` before using generation
+numbers; a changed version requires a full rescan because generation values may
+have reset.
+
+`watchAudioLibrary()` forwards native MediaStore notifications without debouncing.
+The change type is `unknown` before Android 11, so consumers should use every event
+as a signal to reconcile rather than as a complete change record. Cancel the
+subscription when observation is no longer needed.
 
 ### Artwork Widget
 

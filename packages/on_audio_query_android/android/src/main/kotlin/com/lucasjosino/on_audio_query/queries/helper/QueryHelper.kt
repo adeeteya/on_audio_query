@@ -20,7 +20,16 @@ class QueryHelper {
         songData["file_extension"] = displayName.extension
 
         //A different type of "data"
-        val tempUri = ContentUris.withAppendedId(uri, songData["_id"].toString().toLong())
+        val itemUri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val volumeName = songData[MediaStore.MediaColumns.VOLUME_NAME] as? String
+            if (volumeName == null) uri else MediaStore.Audio.Media.getContentUri(volumeName)
+        } else {
+            uri
+        }
+        val tempUri = ContentUris.withAppendedId(
+            itemUri,
+            (songData["_id"] as Number).toLong()
+        )
         songData["_uri"] = tempUri.toString()
 
         return songData
@@ -28,31 +37,13 @@ class QueryHelper {
 
     //This method will separate [String] from [Int]
     fun loadSongItem(itemProperty: String, cursor: Cursor): Any? {
-        return when (itemProperty) {
-            // Int
-            "_id",
-            "album_id",
-            "artist_id" -> {
-                // The [id] from Android >= 30/R is a [Long] instead of [Int].
-                if (Build.VERSION.SDK_INT >= 30) {
-                    cursor.getLong(cursor.getColumnIndex(itemProperty))
-                } else {
-                    cursor.getInt(cursor.getColumnIndex(itemProperty))
-                }
+        return when {
+            isLongSongColumn(itemProperty) -> {
+                val index = cursor.getColumnIndexOrThrow(itemProperty)
+                if (cursor.isNull(index)) null else cursor.getLong(index)
             }
-            "_size",
-            "bookmark",
-            "date_added",
-            "date_modified",
-            "duration",
-            "track" -> cursor.getInt(cursor.getColumnIndex(itemProperty))
             // Boolean
-            "is_alarm",
-            "is_audiobook",
-            "is_music",
-            "is_notification",
-            "is_podcast",
-            "is_ringtone" -> {
+            itemProperty in booleanSongColumns -> {
                 val value = cursor.getString(cursor.getColumnIndex(itemProperty))
                 if (value == "0") return false
                 return true
@@ -66,14 +57,7 @@ class QueryHelper {
     fun loadAlbumItem(itemProperty: String, cursor: Cursor): Any? {
         return when (itemProperty) {
             "_id",
-            "artist_id" -> {
-                // The [album] id from Android >= 30/R is a [Long] instead of [Int].
-                if (Build.VERSION.SDK_INT >= 30) {
-                    cursor.getLong(cursor.getColumnIndex(itemProperty))
-                } else {
-                    cursor.getInt(cursor.getColumnIndex(itemProperty))
-                }
-            }
+            "artist_id" -> cursor.getLong(cursor.getColumnIndex(itemProperty))
             "numsongs" -> cursor.getInt(cursor.getColumnIndex(itemProperty))
             else -> cursor.getString(cursor.getColumnIndex(itemProperty))
         }
@@ -92,14 +76,7 @@ class QueryHelper {
     //This method will separate [String] from [Int]
     fun loadArtistItem(itemProperty: String, cursor: Cursor): Any? {
         return when (itemProperty) {
-            "_id" -> {
-                // The [artist] id from Android >= 30/R is a [Long] instead of [Int].
-                if (Build.VERSION.SDK_INT >= 30) {
-                    cursor.getLong(cursor.getColumnIndex(itemProperty))
-                } else {
-                    cursor.getInt(cursor.getColumnIndex(itemProperty))
-                }
-            }
+            "_id" -> cursor.getLong(cursor.getColumnIndex(itemProperty))
             "number_of_albums",
             "number_of_tracks" -> cursor.getInt(cursor.getColumnIndex(itemProperty))
             else -> cursor.getString(cursor.getColumnIndex(itemProperty))
@@ -109,14 +86,7 @@ class QueryHelper {
     //This method will separate [String] from [Int]
     fun loadGenreItem(itemProperty: String, cursor: Cursor): Any? {
         return when (itemProperty) {
-            "_id" -> {
-                // The [genre] id from Android >= 30/R is a [Long] instead of [Int].
-                if (Build.VERSION.SDK_INT >= 30) {
-                    cursor.getLong(cursor.getColumnIndex(itemProperty))
-                } else {
-                    cursor.getInt(cursor.getColumnIndex(itemProperty))
-                }
-            }
+            "_id" -> cursor.getLong(cursor.getColumnIndex(itemProperty))
             else -> cursor.getString(cursor.getColumnIndex(itemProperty))
         }
     }
@@ -213,3 +183,29 @@ class QueryHelper {
         }
     }
 }
+
+private val longSongColumns = setOf(
+    "_id",
+    "_size",
+    "album_id",
+    "artist_id",
+    "bookmark",
+    "date_added",
+    "date_modified",
+    "duration",
+    "track",
+    "year",
+    "generation_added",
+    "generation_modified"
+)
+
+private val booleanSongColumns = setOf(
+    "is_alarm",
+    "is_audiobook",
+    "is_music",
+    "is_notification",
+    "is_podcast",
+    "is_ringtone"
+)
+
+internal fun isLongSongColumn(column: String): Boolean = column in longSongColumns

@@ -20,6 +20,8 @@ import 'package:flutter/services.dart';
 import 'on_audio_query_platform_interface.dart';
 
 const MethodChannel _channel = MethodChannel('com.lucasjosino.on_audio_query');
+const EventChannel _changeChannel =
+    EventChannel('com.lucasjosino.on_audio_query/audio_library_changes');
 
 /// An implementation of [OnAudioQueryPlatform] that uses method channels.
 class MethodChannelOnAudioQuery extends OnAudioQueryPlatform {
@@ -27,6 +29,7 @@ class MethodChannelOnAudioQuery extends OnAudioQueryPlatform {
   MethodChannel get channel => _channel;
 
   LogConfig _logConfig = LogConfig();
+  Stream<AudioLibraryChange>? _audioLibraryChanges;
 
   @override
   Future<void> setLogConfig(LogConfig? logConfig) async {
@@ -60,6 +63,65 @@ class MethodChannelOnAudioQuery extends OnAudioQueryPlatform {
       },
     );
     return resultSongs.map((e) => SongModel(e)).toList();
+  }
+
+  @override
+  Future<List<SongModel>> querySongsWithOptions({
+    required AudioQueryOptions options,
+    SongSortType? sortType,
+    OrderType? orderType,
+    UriType? uriType,
+    bool? ignoreCase,
+    String? path,
+  }) async {
+    final List<dynamic> songs = await _channel.invokeMethod(
+      'querySongsWithOptions',
+      {
+        'sortType': sortType?.index,
+        'orderType': (orderType ?? OrderType.ASC_OR_SMALLER).index,
+        'uri': (uriType ?? UriType.EXTERNAL).index,
+        'ignoreCase': ignoreCase ?? true,
+        'path': path,
+        'options': options.toMap(),
+      },
+    );
+    return songs.map((song) => SongModel(song)).toList();
+  }
+
+  @override
+  Future<SongPage> querySongsPage({
+    AudioQueryOptions? options,
+    int limit = 500,
+    int offset = 0,
+    SongSortType? sortType,
+    OrderType? orderType,
+  }) async {
+    final Map<dynamic, dynamic> page = await _channel.invokeMethod(
+      'querySongsPage',
+      {
+        'sortType': sortType?.index,
+        'orderType': (orderType ?? OrderType.ASC_OR_SMALLER).index,
+        'ignoreCase': true,
+        'limit': limit,
+        'offset': offset,
+        'options': options?.toMap(),
+      },
+    );
+    return SongPage.fromMap(page);
+  }
+
+  @override
+  Future<List<AudioVolume>> queryAudioVolumes() async {
+    final List<dynamic> volumes =
+        await _channel.invokeMethod('queryAudioVolumes');
+    return volumes.map((volume) => AudioVolume.fromMap(volume as Map)).toList();
+  }
+
+  @override
+  Stream<AudioLibraryChange> watchAudioLibrary() {
+    return _audioLibraryChanges ??= _changeChannel.receiveBroadcastStream().map(
+          (event) => AudioLibraryChange.fromMap(event as Map),
+        );
   }
 
   @override

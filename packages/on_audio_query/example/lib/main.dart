@@ -37,6 +37,8 @@ class _SongsState extends State<Songs> {
 
   // Indicate if application has permission to the library.
   bool _hasPermission = false;
+  bool _isCheckingPermission = true;
+  Future<List<SongModel>>? _songsFuture;
 
   @override
   void initState() {
@@ -55,13 +57,55 @@ class _SongsState extends State<Songs> {
   }
 
   Future<void> checkAndRequestPermissions({bool retry = false}) async {
-    // The param 'retryRequest' is false, by default.
-    _hasPermission = await _audioQuery.checkAndRequest(
-      retryRequest: retry,
-    );
+    try {
+      // The param 'retryRequest' is false, by default.
+      final hasPermission = await _audioQuery.checkAndRequest(
+        retryRequest: retry,
+      );
+      debugPrint(
+        'on_audio_query example: audio permission granted: $hasPermission',
+      );
 
-    // Only call update the UI if application has all required permissions.
-    if (_hasPermission) setState(() {});
+      if (!mounted) return;
+      setState(() {
+        _hasPermission = hasPermission;
+        _isCheckingPermission = false;
+        _songsFuture = hasPermission ? _querySongs() : null;
+      });
+    } catch (error, stackTrace) {
+      debugPrint(
+        'on_audio_query example: permission request failed: $error',
+      );
+      debugPrintStack(stackTrace: stackTrace);
+      if (!mounted) return;
+      setState(() {
+        _hasPermission = false;
+        _isCheckingPermission = false;
+        _songsFuture = null;
+      });
+    }
+  }
+
+  Future<List<SongModel>> _querySongs() async {
+    try {
+      return await _audioQuery.querySongs(
+        sortType: null,
+        orderType: OrderType.ASC_OR_SMALLER,
+        uriType: UriType.EXTERNAL,
+        ignoreCase: true,
+      );
+    } catch (error, stackTrace) {
+      debugPrint('on_audio_query example: song query failed: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      rethrow;
+    }
+  }
+
+  void _retryPermissions() {
+    setState(() {
+      _isCheckingPermission = true;
+    });
+    checkAndRequestPermissions(retry: true);
   }
 
   @override
@@ -72,54 +116,53 @@ class _SongsState extends State<Songs> {
         elevation: 2,
       ),
       body: Center(
-        child: !_hasPermission
-            ? noAccessToLibraryWidget()
-            : FutureBuilder<List<SongModel>>(
-                // Default values:
-                future: _audioQuery.querySongs(
-                  sortType: null,
-                  orderType: OrderType.ASC_OR_SMALLER,
-                  uriType: UriType.EXTERNAL,
-                  ignoreCase: true,
-                ),
-                builder: (context, item) {
-                  // Display error, if any.
-                  if (item.hasError) {
-                    return Text(item.error.toString());
-                  }
+        child: _isCheckingPermission
+            ? const CircularProgressIndicator()
+            : !_hasPermission
+                ? noAccessToLibraryWidget()
+                : FutureBuilder<List<SongModel>>(
+                    future: _songsFuture,
+                    builder: (context, item) {
+                      // Display error, if any.
+                      if (item.hasError) {
+                        return Text(item.error.toString());
+                      }
 
-                  // Waiting content.
-                  if (item.data == null) {
-                    return const CircularProgressIndicator();
-                  }
+                      // Waiting content.
+                      if (item.data == null) {
+                        return const CircularProgressIndicator();
+                      }
 
-                  // 'Library' is empty.
-                  if (item.data!.isEmpty) return const Text("Nothing found!");
+                      // 'Library' is empty.
+                      if (item.data!.isEmpty)
+                        return const Text("Nothing found!");
 
-                  // You can use [item.data!] direct or you can create a:
-                  // List<SongModel> songs = item.data!;
-                  return ListView.builder(
-                    itemCount: item.data!.length,
-                    itemBuilder: (context, index) {
-                      return ListTile(
-                        title: Text(item.data![index].title),
-                        subtitle: Text(item.data![index].artist ?? "No Artist"),
-                        trailing: Text("$index/${item.data!.length}"),
-                        // This Widget will query/load image.
-                        // Android uses the volume-specific URI when available.
-                        leading: QueryArtworkWidget(
-                          controller: _audioQuery,
-                          id: item.data![index].id,
-                          type: ArtworkType.AUDIO,
-                          uri: defaultTargetPlatform == TargetPlatform.android
-                              ? item.data![index].uri
-                              : null,
-                        ),
+                      // You can use [item.data!] direct or you can create a:
+                      // List<SongModel> songs = item.data!;
+                      return ListView.builder(
+                        itemCount: item.data!.length,
+                        itemBuilder: (context, index) {
+                          return ListTile(
+                            title: Text(item.data![index].title),
+                            subtitle:
+                                Text(item.data![index].artist ?? "No Artist"),
+                            trailing: Text("$index/${item.data!.length}"),
+                            // This Widget will query/load image.
+                            // Android uses the volume-specific URI when available.
+                            leading: QueryArtworkWidget(
+                              controller: _audioQuery,
+                              id: item.data![index].id,
+                              type: ArtworkType.AUDIO,
+                              uri: defaultTargetPlatform ==
+                                      TargetPlatform.android
+                                  ? item.data![index].uri
+                                  : null,
+                            ),
+                          );
+                        },
                       );
                     },
-                  );
-                },
-              ),
+                  ),
       ),
     );
   }
@@ -137,7 +180,7 @@ class _SongsState extends State<Songs> {
           const Text("Application doesn't have access to the library"),
           const SizedBox(height: 10),
           ElevatedButton(
-            onPressed: () => checkAndRequestPermissions(retry: true),
+            onPressed: _retryPermissions,
             child: const Text("Allow"),
           ),
         ],

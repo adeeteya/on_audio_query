@@ -31,6 +31,31 @@ class SongModel {
   /// Available on Android 10 and newer.
   String? get volumeName => _info["volume_name"];
 
+  /// Return the MIME type reported by the platform media library.
+  String? get mimeType => _info["mime_type"];
+
+  /// Return the album artist.
+  String? get albumArtist => _info["album_artist"];
+
+  /// Return the release year.
+  int? get year => _info["year"];
+
+  /// Return the MediaStore generation at which the song was added.
+  ///
+  /// Available on Android 11 and newer.
+  int? get generationAdded => _info["generation_added"];
+
+  /// Return the MediaStore generation at which the song was last modified.
+  ///
+  /// Available on Android 11 and newer.
+  int? get generationModified => _info["generation_modified"];
+
+  /// Return a volume-qualified Android MediaStore identity.
+  String? get sourceId {
+    final volume = volumeName;
+    return volume == null ? null : '$volume:$id';
+  }
+
   /// Return song [displayName]
   String get displayName => _info["_display_name"];
 

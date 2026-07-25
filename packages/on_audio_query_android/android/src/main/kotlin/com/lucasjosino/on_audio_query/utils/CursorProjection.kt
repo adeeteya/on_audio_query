@@ -14,6 +14,7 @@ fun songProjection(includeTitleKey: Boolean = false): Array<String> {
         MediaStore.Audio.Media.DISPLAY_NAME,
         MediaStore.Audio.Media._ID,
         MediaStore.Audio.Media.SIZE,
+        MediaStore.Audio.Media.MIME_TYPE,
         MediaStore.Audio.Media.ALBUM,
         MediaStore.Audio.Media.ALBUM_ARTIST,
         MediaStore.Audio.Media.ALBUM_ID,
@@ -41,6 +42,8 @@ fun songProjection(includeTitleKey: Boolean = false): Array<String> {
     }
 
     if (Build.VERSION.SDK_INT >= 30) {
+        tmpProjection.add(MediaStore.MediaColumns.GENERATION_ADDED)
+        tmpProjection.add(MediaStore.MediaColumns.GENERATION_MODIFIED)
         tmpProjection.add(MediaStore.Audio.Media.GENRE) // Only Api >= 30
         tmpProjection.add(MediaStore.Audio.Media.GENRE_ID) // Only Api >= 30
     }
