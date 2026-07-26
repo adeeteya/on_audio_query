@@ -10,10 +10,13 @@ rootProject.allprojects {
 
 apply plugin: 'com.android.library'
 
-// AGP 9 and newer include Kotlin support. Older Android Gradle Plugin
-// versions still require the standalone Kotlin Android plugin.
+// AGP 9 and newer include Kotlin support unless the consuming application has
+// explicitly disabled it. Older Android Gradle Plugin versions and AGP 9
+// projects using the compatibility flags still require the standalone plugin.
 def agpMajor = com.android.Version.ANDROID_GRADLE_PLUGIN_VERSION.tokenize('.')[0] as int
-if (agpMajor < 9) {
+def usesBuiltInKotlin = agpMajor >= 9 &&
+        project.findProperty('android.builtInKotlin') != 'false'
+if (!usesBuiltInKotlin) {
     apply plugin: 'kotlin-android'
     kotlin {
         compilerOptions {
