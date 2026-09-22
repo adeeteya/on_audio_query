@@ -4,6 +4,7 @@
 # website: https://www.lucasjosino.com/
 # ========
 name: on_audio_query_ios
+publish_to: none
 description: iOS implementation of the on_audio_query plugin.
 version: 1.1.0
 homepage: https://github.com/LucJosin/on_audio_query/tree/main/packages/on_audio_query_ios

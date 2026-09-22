@@ -4,6 +4,7 @@
 # website: https://www.lucasjosino.com/
 # ========
 name: on_audio_query_web
+publish_to: none
 description: The web implementation of [on_audio_query].
 version: 1.6.0
 homepage: https://github.com/LucJosin/on_audio_query/tree/main/packages/on_audio_query_web
