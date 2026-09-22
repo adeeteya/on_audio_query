@@ -79,7 +79,7 @@ class AudioQuery : ViewModel() {
         projection: Array<String>
     ): ArrayList<MutableMap<String, Any?>> =
         withContext(Dispatchers.IO) {
-            MediaScannerHelper.ensureVolumesIndexed(context, config.volumeRoots)
+            // Discovery must not trigger an asynchronous directory scan.
 
             val songList: ArrayList<MutableMap<String, Any?>> = ArrayList()
 
