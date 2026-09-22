@@ -65,3 +65,5 @@ build/
 .project
 .classpath
 .settings
+.build/
+.swiftpm/

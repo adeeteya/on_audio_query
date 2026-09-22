@@ -1,7 +1,7 @@
 import Flutter
 import UIKit
 
-public class SwiftOnAudioQueryPlugin: NSObject, FlutterPlugin {
+public class OnAudioQueryPlugin: NSObject, FlutterPlugin {
     private static let CHANNEL_NAME: String = "com.lucasjosino.on_audio_query"
     
     override public init() {
@@ -16,7 +16,7 @@ public class SwiftOnAudioQueryPlugin: NSObject, FlutterPlugin {
             name: "\(CHANNEL_NAME)",
             binaryMessenger: registrar.messenger()
         )
-        let instance = SwiftOnAudioQueryPlugin()
+        let instance = OnAudioQueryPlugin()
         
         registrar.addMethodCallDelegate(instance, channel: channel)
     }
