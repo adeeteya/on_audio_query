@@ -34,7 +34,7 @@ object AndroidLibraryQuery {
                     }
                     songs.add(mapOf(
                         "uri" to ContentUris.withAppendedId(uri, values["_id"] as Long).toString(),
-                        "volume" to volume, "path" to values["_data"],
+                        "volume" to volume, "path" to (values["_data"] as? String)?.takeIf { it.isNotBlank() },
                         "size" to (values["_size"] ?: 0L),
                         "modified" to (values["date_modified"] ?: 0L),
                         "metadata" to values))

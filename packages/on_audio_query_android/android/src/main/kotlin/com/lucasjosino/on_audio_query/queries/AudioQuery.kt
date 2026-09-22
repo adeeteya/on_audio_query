@@ -9,7 +9,6 @@ import android.provider.MediaStore
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lucasjosino.on_audio_query.PluginProvider
-import com.lucasjosino.on_audio_query.queries.helper.MediaScannerHelper
 import com.lucasjosino.on_audio_query.queries.helper.QueryHelper
 import com.lucasjosino.on_audio_query.types.checkAudiosUriType
 import com.lucasjosino.on_audio_query.types.sorttypes.checkSongSortType
@@ -29,6 +28,7 @@ class AudioQuery : ViewModel() {
     // Main parameters
     private val helper = QueryHelper()
     private var selection: String? = null
+    private var selectionArgs: Array<String>? = null
 
     private lateinit var sortType: String
     private lateinit var resolver: ContentResolver
@@ -51,10 +51,12 @@ class AudioQuery : ViewModel() {
 
         // Reset selection filter every call and re-apply the optional path filter.
         selection = null
+        selectionArgs = null
         val projection = songProjection()
         val pathFilter = call.argument<String>("path")
         if (!pathFilter.isNullOrEmpty()) {
-            selection = "${projection[0]} like '%$pathFilter/%'"
+            selection = "${projection[0]} like ?"
+            selectionArgs = arrayOf("%$pathFilter/%")
         }
 
         val uriType = call.argument<Int>("uri")!!
@@ -67,8 +69,11 @@ class AudioQuery : ViewModel() {
 
         // Query everything in background for a better performance.
         viewModelScope.launch {
-            val queryResult = loadSongs(context, uriConfig, projection)
-            result.success(queryResult)
+            try {
+                result.success(loadSongs(context, uriConfig, projection))
+            } catch (error: Exception) {
+                result.error("LibraryQueryFailed", error.message, null)
+            }
         }
     }
 
@@ -84,12 +89,14 @@ class AudioQuery : ViewModel() {
             val songList: ArrayList<MutableMap<String, Any?>> = ArrayList()
 
             for (targetUri in config.uris) {
-                val cursor = resolver.query(targetUri, projection, selection, null, sortType)
+                val cursor = resolver.query(targetUri, projection, selection, selectionArgs, sortType)
+                    ?: error("Cannot query $targetUri")
                 Log.d(TAG, "Cursor count for $targetUri: ${cursor?.count}")
 
                 // For each item(song) inside this "cursor", take one and "format"
                 // into a 'Map<String, dynamic>'.
-                while (cursor != null && cursor.moveToNext()) {
+                cursor.use {
+                while (cursor.moveToNext()) {
                     val tempData: MutableMap<String, Any?> = HashMap()
 
                     for (audioMedia in cursor.columnNames) {
@@ -103,8 +110,7 @@ class AudioQuery : ViewModel() {
                     songList.add(tempData)
                 }
 
-                // Close cursor to avoid memory leaks.
-                cursor?.close()
+                }
             }
 
             return@withContext songList
