@@ -1,5 +1,9 @@
 ## Unreleased
 
+- Resolve all federated Git dependencies from the fork’s main branch.
+
+## Unreleased
+
 - Add Android volume-aware library snapshots with query failure propagation.
 - Keep normal discovery read-only and align fork dependencies.
 
