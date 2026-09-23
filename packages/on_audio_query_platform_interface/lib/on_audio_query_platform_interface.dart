@@ -14,6 +14,8 @@ Copyright: © 2021, Lucas Josino. All rights reserved.
 */
 
 import 'dart:async';
+import 'src/models/android_library_snapshot.dart';
+export 'src/models/android_library_snapshot.dart';
 import 'dart:typed_data';
 
 import 'package:on_audio_query_platform_interface/src/on_audio_query_core.dart';
@@ -31,6 +33,12 @@ export 'package:on_audio_query_platform_interface/src/on_audio_query_core.dart';
 /// platform implementations that `implements` this interface will be broken by newly added
 /// [OnAudioQueryPlatform] methods.
 abstract class OnAudioQueryPlatform extends PlatformInterface {
+  /// Android only. Throws on permission/query failure; never returns a partial
+  /// snapshot, so clients can safely reconcile successfully queried volumes.
+  Future<AndroidLibrarySnapshot> queryAndroidLibrary() {
+    throw UnsupportedError('Android library discovery is unavailable');
+  }
+
   /// Constructs a OnAudioQueryPlatform.
   OnAudioQueryPlatform() : super(token: _token);
 

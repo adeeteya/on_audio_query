@@ -1,3 +1,5 @@
+import Flutter
+
 /**
  * A singleton used to define all variables/methods that will be used on all plugin.
  *

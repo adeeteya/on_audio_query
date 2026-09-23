@@ -16,6 +16,10 @@ part of '../on_audio_query.dart';
 
 /// Interface and Main method for use on_audio_query
 class OnAudioQuery {
+  /// Discover Android audio with volume-aware identity and file fingerprints.
+  Future<AndroidLibrarySnapshot> queryAndroidLibrary() =>
+      platform.queryAndroidLibrary();
+
   /// The platform interface that drives this plugin
   static OnAudioQueryPlatform get platform => OnAudioQueryPlatform.instance;
 

@@ -16,6 +16,8 @@ package com.lucasjosino.on_audio_query
 
 import android.media.MediaScannerConnection
 import android.os.Build
+import com.lucasjosino.on_audio_query.queries.AndroidLibraryQuery
+import kotlinx.coroutines.*
 import com.lucasjosino.on_audio_query.consts.Method
 import com.lucasjosino.on_audio_query.controllers.MethodController
 import com.lucasjosino.on_audio_query.controllers.PermissionController
@@ -43,6 +45,8 @@ class OnAudioQueryPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         private const val CHANNEL_NAME = "com.lucasjosino.on_audio_query"
     }
 
+    private var queryScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
     private var permissionController = PermissionController()
     private var methodController = MethodController()
 
@@ -54,6 +58,7 @@ class OnAudioQueryPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         Log.i(TAG, "Attached to engine")
 
+        queryScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
         // Setup the method channel communication.
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, CHANNEL_NAME)
         channel.setMethodCallHandler(this)
@@ -63,6 +68,24 @@ class OnAudioQueryPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     // Receive method -> check permission -> controller -> do what's needed -> return to dart
     override fun onMethodCall(call: MethodCall, result: Result) {
         Log.d(TAG, "Started method call (${call.method})")
+
+        if (call.method == "queryAndroidLibrary") {
+            val context = PluginProvider.context().applicationContext
+            queryScope.launch {
+                try {
+                    val snapshot = withContext(Dispatchers.IO) {
+                        AndroidLibraryQuery.query(context)
+                    }
+                    result.success(snapshot)
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Exception) {
+                    result.error(if (error is SecurityException) "MissingPermissions"
+                        else "LibraryQueryFailed", error.message, null)
+                }
+            }
+            return
+        }
 
         // Init the plugin provider with current 'call' and 'result'.
         PluginProvider.setCurrentMethod(call, result)
@@ -140,7 +163,7 @@ class OnAudioQueryPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                     )
                 }
 
-                methodController.find()
+                if (hasPermission) methodController.find()
             }
         }
 
@@ -149,6 +172,7 @@ class OnAudioQueryPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         Log.i(TAG, "Detached from engine")
+        queryScope.cancel()
         channel.setMethodCallHandler(null)
     }
 

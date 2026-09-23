@@ -4,6 +4,7 @@
 # website: https://www.lucasjosino.com/
 # ========
 name: on_audio_query
+publish_to: none
 description: Flutter Plugin used to query audios/songs infos [title, artist, album, etc..] from device storage.
 version: 2.9.0
 homepage: https://github.com/LucJosin/on_audio_query/tree/main/packages/on_audio_query
@@ -27,22 +28,22 @@ dependencies:
   on_audio_query_android:
     git:
       url: https://github.com/adeeteya/on_audio_query.git
-      ref: main
+      ref: aramesh/android-library-indexing
       path: packages/on_audio_query_android
   on_audio_query_ios:
     git:
       url: https://github.com/adeeteya/on_audio_query.git
-      ref: main
+      ref: aramesh/android-library-indexing
       path: packages/on_audio_query_ios
   on_audio_query_platform_interface:
     git:
       url: https://github.com/adeeteya/on_audio_query.git
-      ref: main
+      ref: aramesh/android-library-indexing
       path: packages/on_audio_query_platform_interface
   on_audio_query_web:
     git:
       url: https://github.com/adeeteya/on_audio_query.git
-      ref: main
+      ref: aramesh/android-library-indexing
       path: packages/on_audio_query_web
 
   # Flutter

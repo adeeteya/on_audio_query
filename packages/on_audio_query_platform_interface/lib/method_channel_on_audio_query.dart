@@ -23,6 +23,14 @@ const MethodChannel _channel = MethodChannel('com.lucasjosino.on_audio_query');
 
 /// An implementation of [OnAudioQueryPlatform] that uses method channels.
 class MethodChannelOnAudioQuery extends OnAudioQueryPlatform {
+  @override
+  Future<AndroidLibrarySnapshot> queryAndroidLibrary() async {
+    final result = await const MethodChannel('com.lucasjosino.on_audio_query')
+        .invokeMapMethod<dynamic, dynamic>('queryAndroidLibrary');
+    if (result == null) throw StateError('Missing Android library snapshot');
+    return AndroidLibrarySnapshot.fromMap(result);
+  }
+
   /// The MethodChannel that is being used by this implementation of the plugin.
   MethodChannel get channel => _channel;
 

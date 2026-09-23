@@ -48,7 +48,7 @@ class QueryHelper {
             "date_added",
             "date_modified",
             "duration",
-            "track" -> cursor.getInt(cursor.getColumnIndex(itemProperty))
+            "track" -> cursor.getLong(cursor.getColumnIndex(itemProperty))
             // Boolean
             "is_alarm",
             "is_audiobook",
